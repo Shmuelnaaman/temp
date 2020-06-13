@@ -1,243 +1,271 @@
-# **Traffic Sign Recognition | Writeup | Mohit Arvind Khakharia** 
+## Writeup
+
+---
+
+**Advanced Lane Finding Project**
 
 The goals / steps of this project are the following:
-* Load the data set (see below for links to the project data set)
-* Explore, summarize and visualize the data set
-* Design, train and test a model architecture
-* Use the model to make predictions on new images
-* Analyze the softmax probabilities of the new images
-* Summarize the results with a written report
 
+* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
+* Apply a distortion correction to raw images.
+* Use color transforms, gradients, etc., to create a thresholded binary image.
+* Apply a perspective transform to rectify binary image ("birds-eye view").
+* Detect lane pixels and fit to find the lane boundary.
+* Determine the curvature of the lane and vehicle position with respect to center.
+* Warp the detected lane boundaries back onto the original image.
+* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
 [//]: # (Image References)
 
-[image1]: ./custom_pics/1.png "Traffic Sign 1"
-[image2]: ./custom_pics/2.png "Traffic Sign 2"
-[image3]: ./custom_pics/3.png "Traffic Sign 3"
-[image4]: ./custom_pics/4.png "Traffic Sign 4"
-[image5]: ./custom_pics/5.png "Traffic Sign 5"
-[image6]: ./custom_pics/5.png "Traffic Sign 5"
-[image7]: ./images_for_writeup/custom_image_processing.png "Custom_image_processing"
-[image8]: ./images_for_writeup/custom_images.png "Custom_images"
-[image9]: ./images_for_writeup/dataset_augmented.png "Dataset_augmented"
-[image10]: ./images_for_writeup/frequency_analysis.png "Frequency_analysis"
-[image11]: ./images_for_writeup/grayscale_conversion.png "Grayscale_conversion"
-[image12]: ./images_for_writeup/Lenet.png "Lenet"
-[image13]: ./images_for_writeup/optimizers.png "Optimizers"
+[pipeline_original]: ./output_images/pipeline_original.jpg 
+[pipeline_transformed]: ./output_images/pipeline_transformed.jpg 
+[perspective_original]: ./output_images/perspective_original.jpg
+[perspective_transformed]: ./output_images/perspective_transformed.jpg
+[color_original]: ./output_images/color_original.jpg 
+[color_transformed]: ./output_images/color_transformed.jpg 
+[undist_original]: ./output_images/undist_original.jpg 
+[undist_transformed]: ./output_images/undist_transformed.jpg 
+[road_image_original]: ./output_images/road_image_original.jpg 
+[road_image_undist]: ./output_images/road_image_undist.jpg 
+[video1]: ./project_video.mp4 
+
+## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
 ---
-### Project Code
 
-### Data Set Summary & Exploration
+### Camera Calibration
 
-### Before Augmentation
-Size and shape of the training set
-Size - 34799 Samples
-Shape - 34799 x 32 x 32 x 3
+#### 1. Briefly state how you computed the camera matrix and distortion coefficients. Provide an example of a distortion corrected calibration image.
 
- ```
-* Size and shape of the Vlidation set
-```
-Size - 4410 Samples
-Shape - 4410 x 32 x 32 x 3
-```
-* Size and shape of the test set
-```
-Size - 12630 Samples
-Shape - 126302 x 32 x 3
-```
+In order to correctly detect image features and measure different distances, we should consider the image calibration and undistortion.
 
-* Shape of a Traffic Sign image
-``` 
-32 x 32
-```
-* Unique Classes/Labels in the data set
-```
-43
-```
+We can leverage the chessboard image to prepare calibration coefficients for the future undistortions.
 
-### Problem Aspects considered
+1. We start by preparring `object points` which are 3d point in real world space.
+2. Then, we iterate our images, convert them to `grayscale` and try to find the chessboard corners:
 
-- How to avoid over or underfitting?
-- Are techniques like normalization, rgb to grayscale, shuffling needed
-- Number of examples per label (some have more than others).
-- Should we generate fake data / augmentation.
-The decisions taken are described below.
+    ```python
+    gray_img = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    ret, imgpoint = cv2.findChessboardCorners(gray_img, (nx, ny), None)
+    ```
 
-## Data Augmentation
+3. If `image points` were found (2d points in image plane), we collect both `image points and object points` for the future camera callibration.
 
-As mentioned in the lecutre, it is always a good practice to augment the data before training inorder to achieve translationaly, rotational and brightness invariance.
+4. After thar we can use our collected points to callibrate the camera and undistort some of the images:
 
-### Trasnformations Applied
-- Rotation
-- Shear
-- Zoom
-- Translation
-### Dataset size increase
- - ```Training Data new size = 69598 | Approximately 2x```
- - ```Validation Data new size = 17640 | Approximately 1.5x```
- 
-### Visualization of the Augmented dataset.
+    ```python
+    _, mat, dist, _, _ = cv2.calibrateCamera(objpoints, imgpoints, image.shape[1::-1], None, None)
+    undist = cv2.undistort(image, mat, dist, None, mat)
+    ```
 
-![alt text][image9]
+This will result in the following:
 
-### Statistical Analysis of the Class frequency in the Augmented data
-- Tells us if we have enough samples of all the classes
-- Tells us if our training data is not biased
-- Tells us that if we cover all the classes in the Validation set
-- Tells us if we test all the classes in the Test set
+1. Original image:
+    ![alt text][undist_original]
 
-![alt text][image10]
 
-## Model Architecture
-- The architecture implemented was a modified version of LeNet-5 shown in the  [classroom](https://classroom.udacity.com/nanodegrees/nd013/parts/fbf77062-5703-404e-b60c-95b78b2f3f9e/modules/6df7ae49-c61c-4bb2-a23e-6527e69209ec/lessons/601ae704-1035-4287-8b11-e2c2716217ad/concepts/d4aca031-508f-4e0b-b493-e7b706120f81).
+1. Undistorted image:
+    ![alt text][undist_transformed]
 
-### Preprocessing the augmented dataset
 
-- Normalized the data has mean zero and equal variance by using the following formula - `(pixel - 128)/ 128`
-- Converted to grayscale by averaging the channels.
-- Shuffled the data for preventing a biased learning curve when using batch based Gradient algorithms as they assume the batch is an approximation of the entire dataset.
+Road undistortion example:
+
+1. Original image:
+    ![alt text][road_image_original]
+
+
+1. Undistorted image:
+    ![alt text][road_image_undist]
+
+#### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
+
+[The code described in this part is located here](./Advanced_Lanes.ipynb#Color-Transforms-and-Gradients) 
+
+I experimented with multiple combinations of the different thresholds:
+
+1. x_sobel_threshold
+2. y_sobel_threshold
+3. s_channel_threshold
+4. direction_threshold
+5. magnitude_threshold
+
+The best combination I found was the following:
 
 ```
-Training Data Shape - Before Preprocessing
-(69598, 32, 32, 3)
-Training Data Shape - After Preprocessing
-(69598, 32, 32, 1)
-Validation Data Shape - Before Preprocessing
-(17640, 32, 32, 3)
-Validation Data Shape - After Preprocessing
-(17640, 32, 32, 1)
-Testing Data Shape - Before Preprocessing
-(12630, 32, 32, 1)
-Testing Data Shape - After Preprocessing
-(12630, 32, 32, 3)
+magnitude_threshold | (x_sobel_threshold & y_sobel_threshold)
 ```
 
-![alt text][image11]
+First I found both x_sobel and y_sobel by applying `Sobel` function:
 
-### REASON
-- Converting to grayscale -It helped to reduce training time and makes detection color agnostic.
-- Normalizing the data to the range (-1,1) - As mentioned in the classes, a wider distribution in the data would make it more difficult to train using a singlar learning rate. Also, the math becomes difficult at extremely large [or] extremenly small numbers.
-
-#### Original LeNet Model Architecture
-![alt text][image12]
-
-The architecture I used was a modified version of LeNet as it already did a preety good job of classifying images and need a few tweaks to get exceptional performance.
-
-Custom Modified Architecture:
-
-| Layer         		|     Description	        					| 
-|:---------------------:|:---------------------------------------------:| 
-| Input         		| 32x32x1 Grayscale image   							| 
-| Convolution 5x5     	| 1x1 stride, same padding, outputs 28x28x6 	|
-| RELU					|												| outputs 28x28x6
-| Max pooling	      	| 1 2 2 1 stride,  outputs 14x14x6 				|
-| Convolution 5x5	    | outputs 10x10x16     									|
-| RELU					|												| outputs 10x10x16  
-| Max pooling	      	| 1 2 2 1 stride,  outputs 5x5x16  				|
-| Flattening	      	| output 400  				|
-| Fully connected		| output 200        									|
-| Fully connected		| output 100        									|
-| Softmax				| Result output 43        									|
-
-
-## Training the model
-### Hyper Parameters and experimentation
-- EPOCHs = 100 - Tried with other epochs but it did not imporve the accuracy a lot. Higher values caused overfitting and small values caused under fitting.
-- LEARNING RATE = 0.001 - After experimenting it was realized that 0.001 is a really good learning rate for 100 epochs.
-- MU = 0
-- SIGMA = 0.1 - Gives a really good normal distributon for choosing the random weights.
-- KERNEL SIZE = 5 - Experimentation proved that it was a good size for an image of size 32 x 32
-- BATCH SIZE = 128 - Tried with higher batch sizes but only resulted in more memory and time without any noticable increase in accuracy.
-- KEEP PROBABILITY = 1.0 - This method is used more of a replacement to max-pooling now days but since I already had  max-pooling doing the job for me, I did not face the need to change the "Keep Probabilty" to lower numbers.
-
-### Optimizer
-*AdamOptimizer*
-- This works really well because this method computes individual adaptive learning rates for different parameters from estimates of first and second moments of the gradients.
-- Empirical results demonstrate that Adam works well in practice and compares favorably to other stochastic optimization methods.
-
-![alt text][image13]
-
-### Fancy Stuff experimented
-- Tried to implement Hypertuning. An approach to autmatically find the best set of parameters.
-- Played around with Tensor board and TensorFlow summaries for visualization.
-- Played around with a capsule network solution for image classification.
-- Classification using pretrained inception model by retraining the last few layers.
-
-#### FINAL ACCURACY
-| Dataset        	|     Accuracy        					| 
-|:---------------------:|:---------------------------------------------:| 
-| Validation         			| 94.2%   									| 
-| Test    				|93.1% 										|
-
-
-### Model on Custom Images
-- The model was experimented on 5 custom images.
-- The same preprocessing steps of Normalization and Grayscaling were applied.
-- An additional step of resizing was applied.
-```
-Custom Images and Shapes
-img_i: 1.png
-image.shape  (32, 32, 4)
-
-img_i: 2.png
-image.shape  (32, 32, 4)
-
-img_i: 3.png
-image.shape  (32, 32, 4)
-
-img_i: 4.png
-image.shape  (32, 32, 4)
-
-img_i: 5.png
-image.shape  (32, 32, 4)
-
-Gray scaled image array shape - (5, 32, 32, 1)
-```
-![alt text][image8]
-
-## Prediction for custom images
-- The tf.nn.top_k was used fpr predicting the top 3 guesses for each image.
-- Please find the proability of each guess mentioned on the image label
-
-![alt text][image7]
-
-### RESULTS FOR CUSTOM IMAGES
-- The model was able to correctly guess 5 of the 5 traffic signs, which gives an accuracy of 100%.
-```
-Image -  0
-Guess 1 Probability-  0.976936
-Guess 2 Probability-  0.0121746
-Guess 3 Probability-  0.0108897
-Image -  1
-Guess 1 Probability-  1.0
-Guess 2 Probability-  7.67467e-13
-Guess 3 Probability-  4.498e-26
-Image -  2
-Guess 1 Probability-  1.0
-Guess 2 Probability-  1.82335e-18
-Guess 3 Probability-  2.00922e-22
-Image -  3
-Guess 1 Probability-  1.0
-Guess 2 Probability-  0.0
-Guess 3 Probability-  0.0
-Image -  4
-Guess 1 Probability-  1.0
-Guess 2 Probability-  2.11481e-07
-Guess 3 Probability-  1.78538e-11
-
+```python
+x_sobel = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
+y_sobel = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
 ```
 
-| Probability         	|     Prediction	        					| 
-|:---------------------:|:---------------------------------------------:| 
-| 98         			| General Caution   									| 
-| 99.9     				| Speed Limit 30 										|
-| 99.8					| Keep Right											|
-| 99.9	      			| Yield					 				|
-| 99.9				    | Stop (Misclassified)      							|
+Then, in order to find the `magnitude threshold` we calculate the sqaure root of sum of sqaured x_sobel_threshold and sqaured y_sobel_threshold:
 
-### Future Improvements
-- The model needs additional training data for a few classes so that the learning is not biased.
-- The model failed to recognize in a few cases were the images were zoomed and thus we need to add zoom augmentated data.
-- Need to integrate TensorFlow summaries for detailed debugging and analysis.
+```python
+magnitude = np.sqrt(x_sobel**2 + y_sobel**2)
+```
 
+Finally, we can get the combined binary out of these threshold like this:
+
+```python
+combined_binary = np.zeros_like(direction_threshold)
+combined_binary[(magnitude_threshold == 1) 
+                | ((x_threshold == 1) & (y_threshold == 1))] = 1
+```
+
+The above steps resulted the binary image where we can easily distingue the road lanes:
+
+1. Original image:
+    ![alt text][color_original]
+
+
+1. Color transformed image:
+    ![alt text][color_transformed]
+
+#### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
+
+[The code described in this part is located here](./Advanced_Lanes.ipynb#Perspective-Transform) 
+
+First of all we need to define 2 matrices for `source` and `destination` images:
+
+```python
+height = image.shape[0]
+width = image.shape[1]
+
+src = np.float32([[width // 2 - 80, height * 0.625], 
+                  [width // 2 + 80, height * 0.625], 
+                  [-80, height], 
+                  [width + 80, height]])
+dst = np.float32([[80, 0], 
+                  [width - 80, 0], 
+                  [80, height], 
+                  [width - 80, height]])
+```
+
+Then, I applied the `getPerspectiveTransform` to extract the perspective transformation matrix `M`
+
+After, we can use `warpPerspective(image, M, image_size)` function to get our `warped image`:
+
+1. Original image:
+    ![alt text][perspective_original]
+
+
+1. Warped (Perspective Transformed) image:
+    ![alt text][perspective_transformed]
+
+
+Also, I calcualte and return `unwarped_m` by applying `getPerspectiveTransform` method but with swaped `dst and src`:
+
+```python
+unwarped_m = cv2.getPerspectiveTransform(dst, src)
+```
+
+`unwarped_m` allows us to transform the image back to the original once we performed all the required calculations.
+
+#### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
+
+This step actually happens in 2 different classes:
+
+1. The first class SlidingWindow [SlidingWindow](./Advanced_Lanes.ipynb#Sliding-Window) takes care of the lane-line pixels identification.
+It uses collected window indecies in order to keep only `road lane pixles`:
+
+    ```python
+    win_inds = ((nonzero[0] >= self.y_high) & 
+                (nonzero[0] < self.y_low) & 
+                (nonzero[1] >= self.x_center - self.margin) &
+                (nonzero[1] < self.x_center + self.margin)).nonzero()[0]
+
+    if len(win_inds) > self.min_pix:
+        self.x_mean = np.int64(np.mean(nonzero[1][win_inds]))
+        
+    else:
+        self.x_mean = self.x_center
+    ```
+
+    Also, it calculates the `x_mean` of the current window. This variable is getting passed to the next window `x_center` aka `line base`.
+
+2. The second class [RoadLane](./Advanced_Lanes.ipynb#Road-Lane) fits lanes positions with the second degree polynomial:
+
+    ```python
+    y = np.linspace(0, self.heigth - 1, self.heigth)
+    poly_fit = np.array(self.points).mean(axis=0)
+
+    return np.stack((poly_fit[0] * y ** 2 + poly_fit[1] * y + poly_fit[2], y)).astype(np.int).T
+    ```
+
+
+#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
+
+The [RoadLane](./Advanced_Lanes.ipynb#Road-Lane) class also takes care of curvature and position calcualtions:
+
+1. In order to find the curvative of the road, I calcualte the curvative of each lane first:
+
+    ```python
+    fit_curvature = np.polyfit(y * ym_per_pix, x * xm_per_pix, 2)
+
+    radius = ( ( (1 + (2 * fit_curvature[0] * y_eval_const * ym_per_pix + fit_curvature[1])**2) **1.5 ) 
+                / np.absolute(2 * fit_curvature[0]))
+    ```
+
+    Moreover, I also scale the image pixels to the real world road dimensions using these constants described in the course lesons:
+
+    ```python
+    ym_per_pix = 30 / 720 
+    xm_per_pix = 3.7 / 700
+    ```
+
+    Once we get both lanes curvative, we find the road curvative by using this functions in the main [Pipeline](./Advanced_Lanes.ipynb#Pipeline) class:
+
+    ```python
+    def calculate_road_radius(self, left_lane, right_lane):
+            
+            # getting mean between two lanes curvative
+            return np.average([left_lane.calculate_lane_radius(), 
+                            right_lane.calculate_lane_radius()])
+    ```
+
+2. It was relatively easy to find the car position:
+
+    1. Get the `max x point`
+    2. Get the `middle of the road` and subtract the `max x point`
+    3. Multiply by real world scale const `xm_per_pix`
+
+    ```python
+    xm_per_pix = 3.7 / 700 
+        
+    points = self.get_points()
+    x = points[np.max(points[:,1])][0]
+    
+    return np.absolute((self.width // 2 - x) * xm_per_pix)
+    ```
+
+#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
+
+Finally, all the above classes are combined together in the main [Pipeline](./Advanced_Lanes.ipynb#Pipeline) class. 
+
+After calculating the road lanes parameters, the function `display_lane` uses `unwarped_m` to transform the road overlay back to the original image resulting nice color overlap on the detect road. In addition, both `radius` and `center` values are added as text to the image.
+
+![alt text][pipeline_transformed]
+
+---
+
+### Pipeline (video)
+
+#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
+
+Here's a [link to my pipeline video result](./output_video/output_video.mp4)
+
+---
+
+### Discussion
+
+#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+
+Of course, even if this project is considered Advanced Lane detection, it is still has a lot of drawbacks and not good enough for the production self-driving car. 
+
+1. The first major issue I identified is the big shadow that came up in the `challenge video`. Even if we applied multiple thresholds it is still really hard to eliminate all the shadows and keep all the lane pixels. Therefore, the pipeline still needs improvement in the effective shadow elimination. 
+
+2. Also, if we run the current pipeline on the `harder challenge video`, we will see that it really struggles to capture the road lanes. This is due to the extreme road curvative, excessive trees' shadows, and light. 
