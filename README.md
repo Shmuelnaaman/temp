@@ -1,58 +1,153 @@
-## Project: Build a Traffic Sign Recognition Program
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
+# **Finding Lane Lines on the Road** 
 
-Overview
+
 ---
-In this project, you will use what you've learned about deep neural networks and convolutional neural networks to classify traffic signs. You will train and validate a model so it can classify traffic sign images using the [German Traffic Sign Dataset](http://benchmark.ini.rub.de/?section=gtsrb&subsection=dataset). After the model is trained, you will then try out your model on images of German traffic signs that you find on the web.
 
-We have included an Ipython notebook that contains further instructions 
-and starter code. Be sure to download the [Ipython notebook](https://github.com/udacity/CarND-Traffic-Sign-Classifier-Project/blob/master/Traffic_Sign_Classifier.ipynb). 
+Advanced Lane Finding Project
 
-We also want you to create a detailed writeup of the project. Check out the [writeup template](https://github.com/udacity/CarND-Traffic-Sign-Classifier-Project/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup. The writeup can be either a markdown file or a pdf document.
-
-To meet specifications, the project will require submitting three files: 
-* the Ipython notebook with the code
-* the code exported as an html file
-* a writeup report either as a markdown or pdf file 
-
-Creating a Great Writeup
----
-A great writeup should include the [rubric points](https://review.udacity.com/#!/rubrics/481/view) as well as your description of how you addressed each point.  You should include a detailed description of the code used in each step (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
-
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
-
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
-
-The Project
----
 The goals / steps of this project are the following:
-* Load the data set
-* Explore, summarize and visualize the data set
-* Design, train and test a model architecture
-* Use the model to make predictions on new images
-* Analyze the softmax probabilities of the new images
-* Summarize the results with a written report
 
-### Dependencies
-This lab requires:
+* Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
+* Apply a distortion correction to raw images.
+* Use color transforms, gradients, etc., to create a thresholded binary image.
+* Apply a perspective transform to rectify binary image ("birds-eye view").
+* Detect lane pixels and fit to find the lane boundary.
+* Determine the curvature of the lane and vehicle position with respect to center.
+* Warp the detected lane boundaries back onto the original image.
+* Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-* [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit)
 
-The lab environment can be created with CarND Term1 Starter Kit. Click [here](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) for the details.
+[image1]: ./camera_cal/calibration3.jpg "output"
+[image2]: ./camera_cal_output/out_calibration3.jpg "output"
+[image3]: ./test_images/straight_lines1.jpg "output"
+[image4]: ./output_images/test_calibrated_output/out_undis_straight_lines1.jpg "output"
+[image5]: ./test_images/test3.jpg "output"
+[image6]: ./output_images/test_binary_output/out_binary_test3.jpg "output"
+[image7]: ./output_images/test_binary_output/out_binary_test3.jpg "output"
+[image8]: ./output_images/test_perspective_output/out_perspective_test3.jpg "output"
+[image9]: ./output_images/test_windows_output/3_gray.jpg "output"
+[image10]: ./output_images/test_windows_output/3_window.jpg "output"
+[image11]: ./output_images/test_windows_output/3_histogram.jpg "output"
+[image12]: ./output_images/test_windows_output/3_search_around.jpg "output"
+[image13]: ./output_images/test_info/info_example.JPG "output"
 
-### Dataset and Repository
+---
 
-1. Download the data set. The classroom has a link to the data set in the "Project Instructions" content. This is a pickled dataset in which we've already resized the images to 32x32. It contains a training, validation and test set.
-2. Clone the project, which contains the Ipython notebook and the writeup template.
-```sh
-git clone https://github.com/udacity/CarND-Traffic-Sign-Classifier-Project
-cd CarND-Traffic-Sign-Classifier-Project
-jupyter notebook Traffic_Sign_Classifier.ipynb
-```
+### Reflection
 
-### Requirements for Submission
-Follow the instructions in the `Traffic_Sign_Classifier.ipynb` notebook and write the project report using the writeup template as a guide, `writeup_template.md`. Submit the project code and writeup document.
+### 1. Calibration
 
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
+I used a set of chessboard images in order to get the calibration parameters of the used camera.
+Defined function: find_image_distortion()  
+Main functions used inside find_image_distortion():  
+    * cv2.findChessboardCorners()  
+    * cv2.calibrateCamera()
+    
+Effect on chessboard image after applying cv2.undistort():
+
+![alt text][image1]  ![alt text][image2]  
+
+Effect on training image after applying cv2.undistort():
+
+![alt text][image3]  ![alt text][image4]  
+
+
+### 2. Binary image
+
+This pipeline uses an undistorted image as an input and changes its color space from RGB to HLS and Lab spaces.  
+
+L channel of HLS space is used to detect white lanes, while b channel of Lab space is used to detect yellow lanes.
+
+Defined function: binary_pipeline()  
+Main functions used inside find_image_distortion():  
+    * cv2.cvtColor()
+    
+Effect on training image after applying binary threshold:
+    
+![alt text][image5]  ![alt text][image6]  
+
+### 3. Perspective change
+
+In order to get a view of the real dimensions of the lanes, we have to apply a perspective change.  
+I defined get_transform_matrix(). This function takes a list of images with straight lanes and uses canny algorithm and hough transform to detect them. I found interesting to do it this way instead of "hardcoding" origin and destination points.  
+Then, the mean value of start/end point of the lanes is calculated and used with cv2.getPerspectiveTransform() to get a perspective transformation matrix M, as well as the inverse transformation matrix Minv.
+
+Then, cv2.warpPerspective() uses M and a binary image in order to create a binary top-down view.
+Example:
+
+![alt text][image7]  ![alt text][image8]  
+
+    
+### 4. Detect lane pixels and fit polynomial
+
+First, I defined hist() to generate an histogram of the binary warped image
+
+
+![alt text][image9]  ![alt text][image10]  
+
+Then, peaks of the histogram are used to set an starting point for the sliding window method.  
+I defined find_lanes() for this method:  
+It defines a set of "windows" with a certain margin. The first window detects lane points that are close to it.  
+Next windows change their X position based on the position of pixels of the previous window. In addition, I added a new functionality that stores the last x-position change of last windows in order to keep that change even when a new window doesn't find any pixel.  
+
+I also defined fit_polynomial() that takes a set of pixels and fits a second order polynomial to it:  
+![alt text][image11]
+
+For the following frames, i defined search_around_poly() that searchs pixels around the previous polynomial based on a certain margin:  
+![alt text][image12]
+
+
+### 5. Measure curvature of lanes and offset of car
+
+I defined measure_and_paint_offset_real() in order to calculate the deviation of the car from the center of the lane.  
+Position of the car is considered to be at the center of the image. Center of the lane is calculated as the mean value of the closests points to camera of left and right lines.
+
+I defined measure_curvature_real() in order to calculate curvature of left and right lines. This calculation is based on A and B parameters of the fitted polynomial lines.
+
+Both functions use real world data in order to translate values from pixels to meters.  
+
+(Result is shown in the image of the next section)
+
+### 6. Inversed perspective change
+
+inv_transform() was defined in order to translate the fitted polynomials to original images.
+It draws color between both polynomials and uses cv2.warpPerspective and cv2.addWeighted to unwarp the result and combine it with the image.
+
+
+![alt text][image13]
+
+### VIDEO PIPELINE
+
+process_image() has been defined in order to process the video.
+It follows the same order as previous explained sections, and uses some global variables in order to store values between frames.
+"counter" variable is used to check if the first frame is being processed, so the sliding window method is applyed only in that case.
+
+The pipeline asumes that the following parameters have already been calculated and are previously existing:  
+mtx, dist, M, Minv  
+The reason for this is that these are early calculations of the project that slow down the development of the rest of the pipeline.
+  
+
+## Outputs:
+
+[link to folder containing video on its final state](videos_output)  
+
+
+## Discussion:
+
+### Potential shortcomings
+
+  
+* This process is not considering the fact that there could be a much closer car on the same lane.  
+* Lane changing is also not considered on this model.  
+* Different line colors would break the pipeline.  
+
+
+### Possible improvements
+
+* Apply smoothing by averaging previous frame parameters. 
+* Use deep learing techniques to detect lines.
+* Use some method to reject inconsistent frame
+
+
+
 
